@@ -365,7 +365,8 @@ textarea {
 }
 
 .author-info {
-    display: inline-block;
+    text-align: center;
+    display: block;
 }
 
 /* Responsive */

@@ -139,6 +139,13 @@ function handleUrlRouting() {
     promptInput.value = prompt;
     document.getElementById('char-count').textContent = prompt.length.toLocaleString();
 
+    // Prefill context if provided in URL
+    const context = params.get('context');
+    if (context) {
+        const contextInput = document.getElementById('context-input');
+        contextInput.value = context;
+    }
+
     const autoEnter = params.get('enter');
     const rawSearch = window.location.search;
     const hasEnter = autoEnter !== null || rawSearch.includes('&enter') || rawSearch.includes('?enter');
@@ -174,8 +181,10 @@ function setupSharePromptButton() {
 
     function buildShareUrl(includeEnter) {
         const prompt = document.getElementById('prompt-input').value.trim();
+        const context = document.getElementById('context-input').value.trim();
         const base = window.location.origin + window.location.pathname;
         let link = base + '?prompt=' + encodeURIComponent(prompt);
+        if (context) link += '&context=' + encodeURIComponent(context);
         if (includeEnter) link += '&enter';
         return link;
     }

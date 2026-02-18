@@ -165,8 +165,9 @@ const UIRenderer = (() => {
             });
         }
 
-        // Optimized version
-        const optimizedText = result.optimized_version || '';
+        // Optimized version — strip any markdown the model may have included, render as clean paragraphs
+        const optimizedRaw = result.optimized_version || '';
+        const optimizedText = stripMarkdown(optimizedRaw);
         const optimizedEl = document.getElementById('optimized-content');
         optimizedEl.innerHTML = textToParagraphs(optimizedText);
         optimizedEl.dataset.rawText = optimizedText;
@@ -362,6 +363,21 @@ const UIRenderer = (() => {
     }
 
     // --- Helpers ---
+
+    function stripMarkdown(text) {
+        if (!text) return '';
+        return text
+            .replace(/```[\s\S]*?```/g, (m) => m.replace(/```\w*\n?/g, '').replace(/```/g, ''))
+            .replace(/^#{1,6}\s+/gm, '')
+            .replace(/\*\*(.+?)\*\*/g, '$1')
+            .replace(/__(.+?)__/g, '$1')
+            .replace(/\*(.+?)\*/g, '$1')
+            .replace(/_(.+?)_/g, '$1')
+            .replace(/^\s*[-*+]\s+/gm, '- ')
+            .replace(/`(.+?)`/g, '$1')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+    }
 
     function textToParagraphs(text) {
         if (!text) return '';
