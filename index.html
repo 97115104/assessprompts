@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assess Prompts</title>
+    <link rel="stylesheet" href="./css/styles.css">
+    <link rel="stylesheet" href="./css/components.css">
+    <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
+    <script src="https://js.puter.com/v2/"></script>
+</head>
+<body>
+    <h1>Assess Prompts</h1>
+    <p class="subtitle">Expert AI feedback on your prompts. Obtain a quality score, optimization suggestions, and real cost estimates</p>
+    <div class="how-to-use-row">
+        <button id="btn-info" class="btn-how-to-use">How to use</button>
+    </div>
+
+    <!-- Info Modal -->
+    <div id="info-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>About Assess Prompts</h3>
+                <button id="btn-close-info" class="btn-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Assess Prompts</strong> is a free, serverless tool that evaluates your prompts and returns expert feedback. Paste any prompt for any model or task and the tool analyzes it as a strategic advisor specializing in prompt engineering and AI-driven software development.</p>
+
+                <h4>What you get</h4>
+                <p>Each assessment returns a quality score (0–100) with a letter grade, a summary of strengths and issues, a list of missing elements, specific optimization suggestions, a rewritten optimized version of your prompt, and a cost estimate for running your prompt across all major frontier models and self-hosted alternatives.</p>
+
+                <h4>How it works</h4>
+                <p>Paste the prompt you want to assess into the text area. Add optional context to help the advisor understand the prompt's intended use, target model, or audience. Click <strong>Assess Prompt</strong>. The tool sends your prompt to a language model acting as a strategic prompt engineering advisor, which returns structured feedback in four formats: Assessment, Suggestions, Cost Estimate, and raw JSON.</p>
+
+                <h4>Assessment tab</h4>
+                <p>Shows the overall score and grade, a 2-3 sentence expert summary, a list of strengths (what the prompt does well), a list of specific issues (what is wrong and why it matters), and a list of missing elements (high-impact additions).</p>
+
+                <h4>Suggestions tab</h4>
+                <p>Shows 3-6 specific, actionable optimization suggestions with titles and detailed explanations. Below the suggestions is an <strong>optimized version</strong> of your prompt with all improvements applied — ready to copy and use directly.</p>
+
+                <h4>Cost Estimate tab</h4>
+                <p>Shows the estimated token count for your prompt and the cost to run it once, 100 times, and 1,000 times across every major frontier model: Anthropic Claude, OpenAI GPT-4o, Google Gemini, xAI Grok, and Meta Llama. Also includes a note on self-hosted inference costs via Ollama or cloud GPU instances. Use this to make informed decisions about which model is right for your use case and scale.</p>
+
+                <h4>Using the optimized prompt</h4>
+                <p>After assessment, the <strong>Use optimized prompt</strong> section lets you open the improved version directly in ChatGPT, Claude, Copilot, or Gemini. ChatGPT receives the prompt automatically. For Claude, Copilot, and Gemini, the optimized prompt is copied to your clipboard and the service opens in a new tab, just paste it when the page loads.</p>
+
+                <h4>API providers</h4>
+                <p><strong>Puter GPT-OSS</strong> is the default and is completely free with no API key required. It uses Puter's user-pays model, you as a developer pay nothing. Each user covers their own AI inference cost through their Puter account.</p>
+                <p><strong>OpenRouter</strong> is recommended for users who want access to hundreds of models through a single API key. It is CORS-friendly and works directly in the browser. Get a key at openrouter.ai/keys.</p>
+                <p><strong>Anthropic</strong> connects directly to the Claude Messages API. Get a key at console.anthropic.com.</p>
+                <p><strong>OpenAI</strong> connects to the Chat Completions API. Get a key at platform.openai.com.</p>
+                <p><strong>Google Gemini</strong> connects to the Gemini API. Get a key at aistudio.google.com.</p>
+                <p><strong>Ollama</strong> runs AI models locally. No API key needed, no data leaves your computer. Start Ollama with <code>OLLAMA_ORIGINS=*</code> to allow browser access.</p>
+                <p><strong>Custom Endpoint</strong> supports any OpenAI-compatible API. Enter your base URL and it uses the /chat/completions format with Bearer token auth.</p>
+
+                <h4>Tips for best assessments</h4>
+                <p>Paste your full prompt exactly as you intend to use it — don't clean it up before assessing. The tool is more useful when it sees the real prompt, not an idealized version. Use the optional context field to explain what the prompt is for, which model you plan to use, and what a successful output looks like. This helps the advisor give targeted, relevant feedback.</p>
+
+                <h4>URL routing</h4>
+                <p>Add <code>?prompt=your prompt text</code> to the URL to prefill the prompt input, or <code>&amp;enter</code> to also auto-assess on page load. The Share Prompt button generates these links for you.</p>
+
+                <p>All processing happens through the selected API provider. No data is stored on any server.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="file-protocol-warning" class="warning-banner hidden">
+        <strong>Local file detected.</strong> The Puter API requires a web server. Run this from your project folder:
+        <code>python3 -m http.server 8000</code> then open <a href="http://localhost:8000">http://localhost:8000</a>
+    </div>
+
+    <div class="container">
+        <!-- Settings Panel -->
+        <button id="settings-toggle" class="settings-toggle">&#9654; API Settings</button>
+        <div id="settings-panel" class="settings-panel hidden">
+            <div class="form-group">
+                <label for="api-mode">API Provider</label>
+                <select id="api-mode">
+                    <option value="puter">Puter GPT-OSS (Free, no key required)</option>
+                    <option value="openrouter">OpenRouter (CORS-friendly, many models)</option>
+                    <option value="anthropic">Anthropic Claude</option>
+                    <option value="openai">OpenAI</option>
+                    <option value="google">Google Gemini</option>
+                    <option value="ollama">Ollama (Local)</option>
+                    <option value="custom">Custom Endpoint</option>
+                </select>
+            </div>
+
+            <!-- Puter Settings -->
+            <div id="puter-settings" class="provider-settings">
+                <div class="form-group">
+                    <label for="puter-model">Model</label>
+                    <select id="puter-model">
+                        <option value="openai/gpt-oss-120b">gpt-oss-120b (117B params, best quality)</option>
+                        <option value="openai/gpt-oss-120b:exacto">gpt-oss-120b:exacto (precise variant)</option>
+                        <option value="openai/gpt-oss-20b">gpt-oss-20b (21B params, faster)</option>
+                    </select>
+                </div>
+                <p class="settings-hint">Powered by Puter.com — free, no API key needed.</p>
+            </div>
+
+            <!-- Ollama Settings -->
+            <div id="ollama-settings" class="provider-settings hidden">
+                <div class="form-group">
+                    <label for="ollama-url">Ollama URL</label>
+                    <input type="text" id="ollama-url" value="http://localhost:11434" placeholder="http://localhost:11434">
+                </div>
+                <div class="form-group">
+                    <label for="ollama-model">Model</label>
+                    <input type="text" id="ollama-model" placeholder="gpt-oss:20b" value="gpt-oss:20b">
+                </div>
+                <div class="ollama-hint-row">
+                    <p class="settings-hint">Runs locally on your machine — no API key, no data leaves your computer.</p>
+                    <button type="button" id="btn-ollama-help" class="btn-small">Setup Instructions</button>
+                </div>
+            </div>
+
+            <!-- Ollama Instructions Modal -->
+            <div id="ollama-modal" class="modal-overlay hidden">
+                <div class="modal">
+                    <div class="modal-header">
+                        <h3>Running Assess Prompts with Ollama</h3>
+                        <button id="btn-close-ollama" class="btn-modal-close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Ollama lets you run AI models locally on your own machine. No API key needed, no data leaves your computer, and it's completely free.</p>
+
+                        <p class="alert-box"><strong>Browser requirement:</strong> When using Ollama from GitHub Pages (or any HTTPS URL), <strong>Google Chrome is required</strong>. Safari and other WebKit browsers block HTTPS pages from connecting to local HTTP servers.</p>
+
+                        <div class="os-tabs">
+                            <button class="os-tab-btn active" data-os="mac">macOS</button>
+                            <button class="os-tab-btn" data-os="win">Windows</button>
+                            <button class="os-tab-btn" data-os="linux">Linux</button>
+                        </div>
+
+                        <!-- macOS -->
+                        <div class="os-panel active" data-os="mac">
+                            <h4>1. Install Ollama</h4>
+                            <pre class="terminal-block">curl -fsSL https://ollama.com/install.sh | sh</pre>
+
+                            <h4>2. Pull the default model</h4>
+                            <pre class="terminal-block">ollama pull gpt-oss:20b</pre>
+
+                            <h4>3. Start Ollama with remote access enabled</h4>
+                            <pre class="terminal-block">pkill ollama
+OLLAMA_ORIGINS=* ollama serve</pre>
+                            <p>To make this permanent, add to your <code>~/.zshrc</code>:</p>
+                            <pre class="terminal-block">export OLLAMA_ORIGINS=*</pre>
+                        </div>
+
+                        <!-- Windows -->
+                        <div class="os-panel" data-os="win">
+                            <h4>1. Install Ollama</h4>
+                            <p>Download the installer from <strong>ollama.com/download</strong> and run it.</p>
+
+                            <h4>2. Pull the default model</h4>
+                            <pre class="terminal-block">ollama pull gpt-oss:20b</pre>
+
+                            <h4>3. Start Ollama with remote access enabled</h4>
+                            <pre class="terminal-block">Stop-Process -Name ollama -Force
+$env:OLLAMA_ORIGINS="*"; ollama serve</pre>
+                            <p>To make permanent:</p>
+                            <pre class="terminal-block">[System.Environment]::SetEnvironmentVariable("OLLAMA_ORIGINS", "*", "User")</pre>
+                        </div>
+
+                        <!-- Linux -->
+                        <div class="os-panel" data-os="linux">
+                            <h4>1. Install Ollama</h4>
+                            <pre class="terminal-block">curl -fsSL https://ollama.com/install.sh | sh</pre>
+
+                            <h4>2. Pull the default model</h4>
+                            <pre class="terminal-block">ollama pull gpt-oss:20b</pre>
+
+                            <h4>3. Configure and restart</h4>
+                            <pre class="terminal-block">sudo systemctl edit ollama</pre>
+                            <p>Add under <code>[Service]</code>:</p>
+                            <pre class="terminal-block">[Service]
+Environment="OLLAMA_ORIGINS=*"</pre>
+                            <pre class="terminal-block">sudo systemctl restart ollama</pre>
+                        </div>
+
+                        <h4>4. Configure Assess Prompts</h4>
+                        <ol>
+                            <li>Select <strong>Ollama (Local)</strong> as the API Provider</li>
+                            <li>URL defaults to <code>http://localhost:11434</code></li>
+                            <li>Model defaults to <strong>gpt-oss:20b</strong></li>
+                            <li>Click <strong>Assess Prompt</strong> — connection is verified before sending</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shared fields for key-based providers -->
+            <div id="keyed-settings" class="provider-settings hidden">
+                <div class="form-group">
+                    <label for="api-key">API Key</label>
+                    <input type="password" id="api-key" placeholder="sk-...">
+                </div>
+                <div id="base-url-group" class="form-group hidden">
+                    <label for="base-url">Base URL</label>
+                    <input type="text" id="base-url" placeholder="https://api.openai.com/v1">
+                </div>
+                <div class="form-group">
+                    <label for="model-name">Model</label>
+                    <input type="text" id="model-name" placeholder="gpt-4o">
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="save-key">
+                    <label for="save-key">Remember settings in this browser</label>
+                </div>
+                <p id="provider-hint" class="settings-hint"></p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- Input Section -->
+        <div class="form-group">
+            <label for="prompt-input">Prompt to Assess</label>
+            <textarea id="prompt-input" placeholder="Paste the prompt you want to assess here. Paste it exactly as you intend to use it — don't clean it up first." rows="8"></textarea>
+            <div class="char-counter"><span id="char-count">0</span><span id="char-limit-display"> characters</span></div>
+        </div>
+
+        <div class="form-group">
+            <label for="context-input">Context <span class="label-optional">(optional)</span></label>
+            <textarea id="context-input" placeholder="What is this prompt for? Which model will run it? What does a successful output look like? Additional context improves the assessment." rows="2"></textarea>
+        </div>
+
+        <div id="share-prompt-row" class="share-idea-row">
+            <button id="btn-share-prompt" class="btn-small">Share Prompt</button>
+        </div>
+        <button id="assess-btn" class="btn-primary">Assess Prompt</button>
+
+        <!-- Share Modal -->
+        <div id="share-modal" class="modal-overlay hidden">
+            <div class="modal modal-small">
+                <div class="modal-header">
+                    <h3>Share Prompt</h3>
+                    <button id="btn-close-share" class="btn-modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>Share your prompt as a prefilled Assess Prompts link.</p>
+                    <div class="share-options">
+                        <button id="share-url" class="btn-share-option">Copy link</button>
+                        <button id="share-url-enter" class="btn-share-option">Copy link with auto-assess</button>
+                    </div>
+                    <div id="share-status" class="share-status hidden"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error -->
+        <div id="error-section" class="error-message hidden"></div>
+
+        <!-- Loading -->
+        <div id="loading-section" class="loading-container hidden">
+            <div class="spinner"></div>
+            <div id="loading-text" class="loading-text">Analyzing your prompt...</div>
+            <div id="loading-status" class="loading-status">Evaluating clarity, completeness, and cost efficiency</div>
+            <div id="slow-hint" class="slow-hint hidden">
+                Taking too long? <a href="#" id="slow-hint-link">Try a faster model</a>
+            </div>
+        </div>
+
+        <!-- Speed Tip Modal -->
+        <div id="speed-modal" class="modal-overlay hidden">
+            <div class="modal modal-small">
+                <div class="modal-header">
+                    <h3>Switch to a faster model</h3>
+                    <button id="btn-close-speed" class="btn-modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>The gpt-oss-120b model (117B parameters) produces the most thorough assessments but can take 30-60 seconds. If speed is more important, switch to the smaller model:</p>
+                    <ol>
+                        <li>Click <strong>API Settings</strong> at the top of the page</li>
+                        <li>Under <strong>Model</strong>, select <strong>gpt-oss-20b (21B params, faster)</strong></li>
+                        <li>Click <strong>Assess Prompt</strong> again</li>
+                    </ol>
+                    <p>The 20b model is roughly 2-3x faster with slightly lower quality. Both are free through Puter.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Puter Fallback Modal -->
+        <div id="puter-fallback-modal" class="modal-overlay hidden">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>Puter isn't available — run locally with Ollama</h3>
+                    <button id="btn-close-fallback" class="btn-modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p id="puter-fallback-reason"></p>
+                    <p>You can run GPT-OSS locally for free using <strong>Ollama</strong>. No API key, no usage limits, no data leaves your computer.</p>
+
+                    <p class="alert-box"><strong>Browser requirement:</strong> When using Ollama from GitHub Pages (or any HTTPS URL), <strong>Google Chrome is required</strong>.</p>
+
+                    <div class="os-tabs">
+                        <button class="os-tab-btn active" data-os="mac">macOS</button>
+                        <button class="os-tab-btn" data-os="win">Windows</button>
+                        <button class="os-tab-btn" data-os="linux">Linux</button>
+                    </div>
+
+                    <!-- macOS -->
+                    <div class="os-panel active" data-os="mac">
+                        <p><strong>1.</strong> Install Ollama:</p>
+                        <pre class="terminal-block">curl -fsSL https://ollama.com/install.sh | sh</pre>
+                        <p><strong>2.</strong> Pull GPT-OSS and start with browser access:</p>
+                        <pre class="terminal-block">ollama pull gpt-oss:20b
+pkill ollama
+OLLAMA_ORIGINS=* ollama serve</pre>
+                    </div>
+
+                    <!-- Windows -->
+                    <div class="os-panel" data-os="win">
+                        <p><strong>1.</strong> Download from <strong>ollama.com/download</strong> and install.</p>
+                        <p><strong>2.</strong> In PowerShell:</p>
+                        <pre class="terminal-block">ollama pull gpt-oss:20b
+Stop-Process -Name ollama -Force
+$env:OLLAMA_ORIGINS="*"; ollama serve</pre>
+                    </div>
+
+                    <!-- Linux -->
+                    <div class="os-panel" data-os="linux">
+                        <p><strong>1.</strong> Install and configure:</p>
+                        <pre class="terminal-block">curl -fsSL https://ollama.com/install.sh | sh
+ollama pull gpt-oss:20b
+sudo systemctl edit ollama
+# Add: Environment="OLLAMA_ORIGINS=*"
+sudo systemctl restart ollama</pre>
+                    </div>
+
+                    <p><strong>3.</strong> Click below to switch Assess Prompts to Ollama:</p>
+                    <button id="btn-switch-ollama" class="btn-primary" style="margin-top: 8px;">Switch to Ollama now</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Output -->
+        <div id="output-section" class="output-section hidden">
+            <hr class="section-divider">
+            <h3>Assessment Results</h3>
+
+            <div class="tab-bar">
+                <button class="tab-btn active" data-tab="assessment">Assessment</button>
+                <button class="tab-btn" data-tab="suggestions">Suggestions</button>
+                <button class="tab-btn" data-tab="cost">Cost Estimate</button>
+                <button class="tab-btn" data-tab="json">JSON</button>
+            </div>
+
+            <!-- Assessment Tab -->
+            <div class="tab-panel active" data-tab="assessment">
+                <div class="assessment-header">
+                    <div id="score-badge" class="score-badge grade-b">
+                        <span id="score-value" class="score-value">—</span>
+                        <span id="score-grade" class="score-grade">—</span>
+                    </div>
+                    <div id="assessment-summary" class="assessment-summary-text"></div>
+                </div>
+
+                <div class="assessment-section">
+                    <div class="assessment-section-title">Strengths</div>
+                    <div id="strengths-list"></div>
+                </div>
+
+                <div class="assessment-section">
+                    <div class="assessment-section-title">Issues</div>
+                    <div id="issues-list"></div>
+                </div>
+
+                <div class="assessment-section">
+                    <div class="assessment-section-title">Missing Elements</div>
+                    <div id="missing-list"></div>
+                </div>
+
+                <div class="btn-row">
+                    <button class="btn-small btn-copy" data-target="assessment-raw">Copy Assessment</button>
+                </div>
+
+                <!-- Hidden raw text for copy -->
+                <textarea id="assessment-raw" class="raw-data"></textarea>
+            </div>
+
+            <!-- Suggestions Tab -->
+            <div class="tab-panel" data-tab="suggestions">
+                <div id="suggestions-list"></div>
+
+                <div class="optimized-section-label">Optimized Version</div>
+                <div id="optimized-content" class="plain-text-output"></div>
+                <div class="btn-row">
+                    <button class="btn-small btn-copy" data-target="optimized-content">Copy</button>
+                    <button class="btn-small btn-download" data-target="optimized-content" data-format="txt">Download .txt</button>
+                </div>
+
+                <div id="optimization-notes" class="optimization-notes hidden">
+                    <strong>Optimization Notes</strong>
+                    <span></span>
+                </div>
+            </div>
+
+            <!-- Cost Estimate Tab -->
+            <div class="tab-panel" data-tab="cost">
+                <div id="token-summary" class="token-summary"></div>
+                <table class="cost-table">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Model</th>
+                            <th>Per Run</th>
+                            <th>Per 100 Runs</th>
+                            <th>Per 1,000 Runs</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cost-table-body"></tbody>
+                </table>
+                <div id="self-hosted-note" class="self-hosted-note hidden"></div>
+            </div>
+
+            <!-- JSON Tab -->
+            <div class="tab-panel" data-tab="json">
+                <pre id="json-content"></pre>
+                <div class="btn-row">
+                    <button class="btn-small btn-copy" data-target="json-content">Copy</button>
+                    <button class="btn-small btn-download" data-target="json-content" data-format="json">Download .json</button>
+                </div>
+            </div>
+
+            <!-- Open in model buttons -->
+            <div class="open-in-section">
+                <h4>Use optimized prompt</h4>
+                <div class="open-in-row">
+                    <button class="btn-open-in btn-chatgpt" data-service="chatgpt">Open in ChatGPT</button>
+                    <button class="btn-open-in btn-claude" data-service="claude">Open in Claude</button>
+                    <button class="btn-open-in btn-copilot" data-service="copilot">Open in Copilot</button>
+                    <button class="btn-open-in btn-gemini" data-service="gemini">Open in Gemini</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clipboard toast modal -->
+    <div id="clipboard-modal" class="clipboard-modal hidden">
+        <div class="clipboard-modal-content">
+            <button id="clipboard-modal-close" class="btn-modal-close">&times;</button>
+            <p id="clipboard-modal-text"></p>
+            <div class="clipboard-modal-actions">
+                <button id="clipboard-modal-confirm" class="btn-primary">Open now</button>
+                <button id="clipboard-modal-cancel" class="btn-small">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="license-section">
+        <div class="footer-links">
+            <div class="license-badge">
+                MIT License
+                <div class="license-tooltip">
+                    MIT License<br><br>
+                    Copyright (c) 2026 Austin Harshberger<br><br>
+                    Permission is hereby granted, free of charge, to any person obtaining a copy
+                    of this software and associated documentation files (the "Software"), to deal
+                    in the Software without restriction, including without limitation the rights
+                    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+                    copies of the Software, and to permit persons to whom the Software is
+                    furnished to do so, subject to the following conditions:<br><br>
+                    The above copyright notice and this permission notice shall be included in all
+                    copies or substantial portions of the Software.
+                </div>
+            </div>
+            <a href="https://attest.ink/verify/?data=eyJ2ZXJzaW9uIjoiMi4wIiwiaWQiOiIyMDI2LTAyLTE3LWFzc2Vzc3Byb21wdHMiLCJjb250ZW50X25hbWUiOiJBc3Nlc3MgUHJvbXB0cyIsInRpbWVzdGFtcCI6IjIwMjYtMDItMTdUMDA6MDA6MDAuMDAwWiIsInBsYXRmb3JtIjoiYXR0ZXN0LmluayIsIm1vZGVsIjoiY2xhdWRlLXNvbm5ldC00LTYiLCJyb2xlIjoiZ2VuZXJhdGVkIiwiZG9jdW1lbnRfdHlwZSI6ImNvZGUiLCJhdXRob3IiOiI5NyAxMTUgMTA0In0=" class="attest-badge" target="_blank" rel="noopener noreferrer">
+                built with ai
+            </a>
+        </div>
+        <div class="author-info">
+            Created by Austin Harshberger
+        </div>
+    </footer>
+
+    <script src="./js/assessEngine.js"></script>
+    <script src="./js/apiClient.js"></script>
+    <script src="./js/uiRenderer.js"></script>
+    <script src="./js/app.js"></script>
+</body>
+</html>
