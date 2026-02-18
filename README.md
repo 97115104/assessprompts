@@ -1,6 +1,6 @@
 # Assess Prompts
 
-Expert AI feedback on your prompts — quality score, optimization suggestions, missing elements, and real cost estimates across frontier models.
+Expert AI feedback on your prompts via a quality score, optimization suggestions, missing elements, and real cost estimates across frontier models.
 
 ## Features
 
