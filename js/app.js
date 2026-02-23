@@ -125,7 +125,37 @@ document.addEventListener('DOMContentLoaded', () => {
 function handleUrlRouting() {
     const params = new URLSearchParams(window.location.search);
 
-    let prompt = params.get('prompt');
+    // Try compressed parameters first (p=compressed, c=compressed context)
+    let prompt = null;
+    let context = null;
+    const compressedPrompt = params.get('p');
+    const compressedContext = params.get('c');
+    
+    if (compressedPrompt && typeof LZString !== 'undefined') {
+        try {
+            prompt = LZString.decompressFromEncodedURIComponent(compressedPrompt);
+        } catch (e) {
+            console.warn('Failed to decompress prompt:', e);
+        }
+    }
+    
+    if (compressedContext && typeof LZString !== 'undefined') {
+        try {
+            context = LZString.decompressFromEncodedURIComponent(compressedContext);
+        } catch (e) {
+            console.warn('Failed to decompress context:', e);
+        }
+    }
+    
+    // Fall back to uncompressed parameters
+    if (!prompt) {
+        prompt = params.get('prompt');
+    }
+    if (!context) {
+        context = params.get('context');
+    }
+    
+    // Legacy support for ?=prompt format
     if (!prompt) {
         const raw = window.location.search;
         if (raw.startsWith('?=')) {
@@ -140,7 +170,6 @@ function handleUrlRouting() {
     document.getElementById('char-count').textContent = prompt.length.toLocaleString();
 
     // Prefill context if provided in URL
-    const context = params.get('context');
     if (context) {
         const contextInput = document.getElementById('context-input');
         contextInput.value = context;
@@ -183,6 +212,20 @@ function setupSharePromptButton() {
         const prompt = document.getElementById('prompt-input').value.trim();
         const context = document.getElementById('context-input').value.trim();
         const base = window.location.origin + window.location.pathname;
+        
+        // Always use compression for URLs - produces shorter, more reliable URLs
+        if (typeof LZString !== 'undefined') {
+            const compressedPrompt = LZString.compressToEncodedURIComponent(prompt);
+            let link = base + '?p=' + compressedPrompt;
+            if (context) {
+                const compressedContext = LZString.compressToEncodedURIComponent(context);
+                link += '&c=' + compressedContext;
+            }
+            if (includeEnter) link += '&enter';
+            return link;
+        }
+        
+        // Fallback if LZString not loaded
         let link = base + '?prompt=' + encodeURIComponent(prompt);
         if (context) link += '&context=' + encodeURIComponent(context);
         if (includeEnter) link += '&enter';
