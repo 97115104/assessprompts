@@ -74,6 +74,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('settings-toggle').textContent = '\u25BC API Settings';
     });
 
+    // Compliance modal
+    setupComplianceModal();
+
     // Settings toggle
     document.getElementById('settings-toggle').addEventListener('click', () => {
         const panel = document.getElementById('settings-panel');
@@ -592,15 +595,125 @@ async function handleAssess() {
         const result = await ApiClient.assess(params);
         UIRenderer.renderOutput(result);
     } catch (err) {
-        if (err.puterFallback) {
+        if (err.complianceError) {
+            showComplianceError(err.complianceReason);
+        } else if (err.puterFallback) {
             showPuterFallback(err.message);
+            UIRenderer.showError(err.message);
+        } else {
+            UIRenderer.showError(err.message);
         }
-        UIRenderer.showError(err.message);
     } finally {
         clearTimeout(slowHintTimer);
         document.getElementById('slow-hint').classList.add('hidden');
         document.getElementById('assess-btn').disabled = false;
         document.getElementById('share-prompt-row').classList.remove('hidden');
         updateLoadingStatus('Analyzing your prompt...', 'Evaluating clarity, completeness, and cost efficiency');
+    }
+}
+
+// --- Compliance Modal ---
+
+function setupComplianceModal() {
+    const modal = document.getElementById('compliance-modal');
+
+    document.getElementById('btn-close-compliance').addEventListener('click', () => {
+        modal.classList.add('hidden');
+    });
+
+    document.getElementById('btn-dismiss-compliance').addEventListener('click', () => {
+        modal.classList.add('hidden');
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) {
+            modal.classList.add('hidden');
+        }
+    });
+
+    document.getElementById('btn-fix-prompt').addEventListener('click', async () => {
+        await fixPromptForCompliance();
+    });
+}
+
+function showComplianceError(reason) {
+    UIRenderer.hideLoading();
+    document.getElementById('compliance-reason').textContent = reason;
+    document.getElementById('compliance-fixing').classList.add('hidden');
+    document.getElementById('btn-fix-prompt').disabled = false;
+    document.getElementById('compliance-modal').classList.remove('hidden');
+}
+
+async function fixPromptForCompliance() {
+    const prompt = document.getElementById('prompt-input').value.trim();
+    const context = document.getElementById('context-input').value.trim();
+
+    // Show fixing state
+    document.getElementById('btn-fix-prompt').disabled = true;
+    document.getElementById('compliance-fixing').classList.remove('hidden');
+
+    const fixSystemMessage = `You are an expert prompt engineer. Your task is to rephrase prompts that were flagged by content filters so they can be assessed by prompt evaluation tools.
+
+Rules for rephrasing:
+1. Convert any requests to "clone" or "copy" websites/content into requests to "build inspired by" or "learn from" or "analyze the design patterns of"
+2. Add explicit educational/learning framing
+3. Add disclaimers about respecting copyright and intellectual property
+4. Preserve the technical requirements and scope of the original prompt
+5. Keep the same level of detail and structure
+6. Make minimal changes - only what's needed to pass content filters
+
+Return ONLY the rephrased prompt text. No explanations, no markdown, no preamble.`;
+
+    const fixUserMessage = `Rephrase this prompt so it can be assessed by a prompt evaluation tool. The original was flagged for potentially involving copyright infringement or content cloning.
+
+Original prompt:
+${prompt}
+${context ? '\nContext: ' + context : ''}
+
+Return ONLY the rephrased prompt.`;
+
+    try {
+        // Get current API settings
+        const apiMode = document.getElementById('api-mode').value;
+        const params = { apiMode };
+
+        if (apiMode === 'puter') {
+            params.puterModel = document.getElementById('puter-model').value;
+        } else if (apiMode === 'ollama') {
+            params.ollamaUrl = document.getElementById('ollama-url').value.trim() || undefined;
+            params.ollamaModel = document.getElementById('ollama-model').value.trim() || undefined;
+        } else {
+            params.apiKey = document.getElementById('api-key').value.trim();
+            params.model = document.getElementById('model-name').value.trim() || undefined;
+            if (apiMode === 'custom') {
+                params.baseUrl = document.getElementById('base-url').value.trim() || undefined;
+            }
+        }
+
+        params.systemMessage = fixSystemMessage;
+        params.userMessage = fixUserMessage;
+
+        // Call API to fix the prompt (raw text response)
+        const fixedPrompt = await ApiClient.chatRaw(params);
+
+        if (fixedPrompt && fixedPrompt.trim().length > 50) {
+            // Update the prompt input
+            const cleanedPrompt = fixedPrompt.trim();
+            document.getElementById('prompt-input').value = cleanedPrompt;
+            document.getElementById('char-count').textContent = cleanedPrompt.length.toLocaleString();
+
+            // Close modal
+            document.getElementById('compliance-modal').classList.add('hidden');
+
+            // Auto-assess the fixed prompt
+            setTimeout(() => handleAssess(), 300);
+        } else {
+            throw new Error('Could not generate a fixed prompt. Try rephrasing manually.');
+        }
+    } catch (err) {
+        document.getElementById('compliance-fixing').classList.add('hidden');
+        document.getElementById('btn-fix-prompt').disabled = false;
+        UIRenderer.showError('Failed to fix prompt: ' + err.message);
+        document.getElementById('compliance-modal').classList.add('hidden');
     }
 }

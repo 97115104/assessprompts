@@ -724,3 +724,114 @@
         display: none;
     }
 }
+
+/* Compliance Modal */
+.modal-compliance {
+    max-width: 520px;
+}
+
+.modal-header-warning {
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    color: white;
+}
+
+.modal-header-warning .btn-modal-close {
+    color: white;
+}
+
+.modal-header-warning .btn-modal-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.compliance-icon {
+    font-size: 48px;
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.compliance-reason {
+    background: #fff3e0;
+    border-left: 4px solid #ff9800;
+    padding: 12px 16px;
+    margin: 16px 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #e65100;
+    border-radius: 0 4px 4px 0;
+}
+
+.compliance-help {
+    font-size: 14px;
+    color: #666;
+    line-height: 1.6;
+    margin: 12px 0;
+}
+
+.compliance-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.compliance-actions .btn-primary {
+    flex: 1;
+    min-width: 160px;
+}
+
+.compliance-actions .btn-secondary {
+    flex: 0 0 auto;
+    background: #f5f5f5;
+    color: #666;
+    border: 1px solid #ddd;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.compliance-actions .btn-secondary:hover {
+    background: #eee;
+}
+
+.compliance-fixing {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 12px;
+    background: #f0f7ff;
+    border-radius: 6px;
+    color: #1976d2;
+    font-size: 14px;
+}
+
+.spinner-small {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e3f2fd;
+    border-top-color: #1976d2;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@media (max-width: 600px) {
+    .modal-compliance {
+        margin: 16px;
+        max-width: calc(100% - 32px);
+    }
+
+    .compliance-actions {
+        flex-direction: column;
+    }
+
+    .compliance-actions .btn-primary,
+    .compliance-actions .btn-secondary {
+        width: 100%;
+    }
+
+    .compliance-icon {
+        font-size: 36px;
+    }
+}

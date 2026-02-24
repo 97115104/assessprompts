@@ -250,6 +250,30 @@ Environment="OLLAMA_ORIGINS=*"</pre>
             </div>
         </div>
 
+        <!-- Compliance Error Modal -->
+        <div id="compliance-modal" class="modal-overlay hidden">
+            <div class="modal modal-compliance">
+                <div class="modal-header modal-header-warning">
+                    <h3>Content Policy Notice</h3>
+                    <button id="btn-close-compliance" class="btn-modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="compliance-icon">⚠️</div>
+                    <p id="compliance-reason" class="compliance-reason"></p>
+                    <p class="compliance-help">The AI model flagged your prompt due to content policy restrictions. This typically happens with prompts that involve cloning websites, generating copyrighted content, or other sensitive topics.</p>
+                    <p class="compliance-help">You can automatically rephrase your prompt to focus on learning and educational purposes, which usually resolves this issue.</p>
+                    <div class="compliance-actions">
+                        <button id="btn-fix-prompt" class="btn-primary">Fix Prompt Automatically</button>
+                        <button id="btn-dismiss-compliance" class="btn-secondary">Dismiss</button>
+                    </div>
+                    <div id="compliance-fixing" class="compliance-fixing hidden">
+                        <div class="spinner-small"></div>
+                        <span>Rephrasing your prompt...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Error -->
         <div id="error-section" class="error-message hidden"></div>
 

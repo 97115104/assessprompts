@@ -388,6 +388,15 @@ const ApiClient = (() => {
     function parseResponse(content) {
         const parsed = tryParseJson(content);
 
+        // Check for compliance refusal
+        if (parsed && parsed.compliance === false) {
+            const error = new Error(parsed.reason || 'The model declined to assess this prompt due to content policy restrictions.');
+            error.complianceError = true;
+            error.complianceReason = parsed.reason || 'Content policy violation detected.';
+            error.dimensions = parsed.dimensions || {};
+            throw error;
+        }
+
         if (parsed && (parsed.assessment_summary || parsed.score !== undefined)) {
             return parsed;
         }
@@ -524,5 +533,66 @@ const ApiClient = (() => {
         return { ok: true };
     }
 
-    return { assess, preflightCheck, PROVIDERS };
+    // Simple chat completion that returns raw text (for prompt fixing)
+    async function chatRaw({ apiKey, baseUrl, model, systemMessage, userMessage, apiMode, puterModel, ollamaUrl, ollamaModel }) {
+        if (apiMode === 'puter') {
+            if (typeof puter === 'undefined' || !puter.ai) {
+                throw new Error('Puter SDK not loaded.');
+            }
+            const response = await puter.ai.chat(
+                [
+                    { role: 'system', content: systemMessage },
+                    { role: 'user', content: userMessage }
+                ],
+                { model: puterModel || PROVIDERS.puter.defaultModel }
+            );
+            return response?.message?.content || '';
+        }
+
+        if (apiMode === 'ollama') {
+            const base = (ollamaUrl || PROVIDERS.ollama.baseUrl).replace(/\/+$/, '');
+            const modelName = ollamaModel || PROVIDERS.ollama.defaultModel;
+            const url = `${base}/api/chat`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: modelName,
+                    stream: false,
+                    messages: [
+                        { role: 'system', content: systemMessage },
+                        { role: 'user', content: userMessage }
+                    ]
+                })
+            });
+            const data = await response.json();
+            return data.message?.content || '';
+        }
+
+        // OpenAI-compatible endpoints
+        const provider = PROVIDERS[apiMode] || PROVIDERS.custom;
+        const base = (baseUrl || provider.baseUrl || '').replace(/\/+$/, '');
+        const modelName = model || provider.defaultModel;
+        const url = `${base}/chat/completions`;
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: modelName,
+                messages: [
+                    { role: 'system', content: systemMessage },
+                    { role: 'user', content: userMessage }
+                ]
+            })
+        });
+
+        const data = await response.json();
+        return data.choices?.[0]?.message?.content || '';
+    }
+
+    return { assess, preflightCheck, chatRaw, PROVIDERS };
 })();
