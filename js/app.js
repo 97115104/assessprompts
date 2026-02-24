@@ -126,43 +126,84 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- URL Routing ---
 
 function handleUrlRouting() {
-    const params = new URLSearchParams(window.location.search);
-
-    // Try compressed parameters first (p=compressed, c=compressed context)
     let prompt = null;
     let context = null;
-    const compressedPrompt = params.get('p');
-    const compressedContext = params.get('c');
-    
-    if (compressedPrompt && typeof LZString !== 'undefined') {
-        try {
-            prompt = LZString.decompressFromEncodedURIComponent(compressedPrompt);
-        } catch (e) {
-            console.warn('Failed to decompress prompt:', e);
+    let hasEnter = false;
+
+    // First, check URL hash (preferred - not sent to server, no length limit)
+    const hash = window.location.hash;
+    if (hash && hash.length > 1) {
+        const hashParams = new URLSearchParams(hash.substring(1));
+        
+        // Try compressed parameters first (p=compressed, c=compressed context)
+        const compressedPrompt = hashParams.get('p');
+        const compressedContext = hashParams.get('c');
+        
+        if (compressedPrompt && typeof LZString !== 'undefined') {
+            try {
+                prompt = LZString.decompressFromEncodedURIComponent(compressedPrompt);
+            } catch (e) {
+                console.warn('Failed to decompress prompt from hash:', e);
+            }
         }
-    }
-    
-    if (compressedContext && typeof LZString !== 'undefined') {
-        try {
-            context = LZString.decompressFromEncodedURIComponent(compressedContext);
-        } catch (e) {
-            console.warn('Failed to decompress context:', e);
+        
+        if (compressedContext && typeof LZString !== 'undefined') {
+            try {
+                context = LZString.decompressFromEncodedURIComponent(compressedContext);
+            } catch (e) {
+                console.warn('Failed to decompress context from hash:', e);
+            }
         }
+        
+        // Check for enter flag in hash
+        hasEnter = hashParams.get('enter') !== null || hash.includes('&enter');
     }
-    
-    // Fall back to uncompressed parameters
+
+    // Fall back to query string params (for backward compatibility with shorter prompts)
     if (!prompt) {
-        prompt = params.get('prompt');
-    }
-    if (!context) {
-        context = params.get('context');
-    }
-    
-    // Legacy support for ?=prompt format
-    if (!prompt) {
-        const raw = window.location.search;
-        if (raw.startsWith('?=')) {
-            prompt = decodeURIComponent(raw.substring(2).split('&')[0]);
+        const params = new URLSearchParams(window.location.search);
+        
+        // Try compressed parameters first
+        const compressedPrompt = params.get('p');
+        const compressedContext = params.get('c');
+        
+        if (compressedPrompt && typeof LZString !== 'undefined') {
+            try {
+                prompt = LZString.decompressFromEncodedURIComponent(compressedPrompt);
+            } catch (e) {
+                console.warn('Failed to decompress prompt:', e);
+            }
+        }
+        
+        if (compressedContext && typeof LZString !== 'undefined') {
+            try {
+                context = LZString.decompressFromEncodedURIComponent(compressedContext);
+            } catch (e) {
+                console.warn('Failed to decompress context:', e);
+            }
+        }
+        
+        // Fall back to uncompressed parameters
+        if (!prompt) {
+            prompt = params.get('prompt');
+        }
+        if (!context) {
+            context = params.get('context');
+        }
+        
+        // Legacy support for ?=prompt format
+        if (!prompt) {
+            const raw = window.location.search;
+            if (raw.startsWith('?=')) {
+                prompt = decodeURIComponent(raw.substring(2).split('&')[0]);
+            }
+        }
+        
+        // Check for enter flag in query string
+        if (!hasEnter) {
+            const autoEnter = params.get('enter');
+            const rawSearch = window.location.search;
+            hasEnter = autoEnter !== null || rawSearch.includes('&enter') || rawSearch.includes('?enter');
         }
     }
 
@@ -177,10 +218,6 @@ function handleUrlRouting() {
         const contextInput = document.getElementById('context-input');
         contextInput.value = context;
     }
-
-    const autoEnter = params.get('enter');
-    const rawSearch = window.location.search;
-    const hasEnter = autoEnter !== null || rawSearch.includes('&enter') || rawSearch.includes('?enter');
 
     if (hasEnter) {
         setTimeout(() => handleAssess(), 500);
@@ -216,23 +253,24 @@ function setupSharePromptButton() {
         const context = document.getElementById('context-input').value.trim();
         const base = window.location.origin + window.location.pathname;
         
-        // Always use compression for URLs - produces shorter, more reliable URLs
+        // Use hash fragment (#) instead of query string (?)
+        // Hash is never sent to server, so no URI length limit from server
         if (typeof LZString !== 'undefined') {
             const compressedPrompt = LZString.compressToEncodedURIComponent(prompt);
-            let link = base + '?p=' + compressedPrompt;
+            let hash = 'p=' + compressedPrompt;
             if (context) {
                 const compressedContext = LZString.compressToEncodedURIComponent(context);
-                link += '&c=' + compressedContext;
+                hash += '&c=' + compressedContext;
             }
-            if (includeEnter) link += '&enter';
-            return link;
+            if (includeEnter) hash += '&enter';
+            return base + '#' + hash;
         }
         
-        // Fallback if LZString not loaded
-        let link = base + '?prompt=' + encodeURIComponent(prompt);
-        if (context) link += '&context=' + encodeURIComponent(context);
-        if (includeEnter) link += '&enter';
-        return link;
+        // Fallback if LZString not loaded - still use hash
+        let hash = 'prompt=' + encodeURIComponent(prompt);
+        if (context) hash += '&context=' + encodeURIComponent(context);
+        if (includeEnter) hash += '&enter';
+        return base + '#' + hash;
     }
 
     function showShareStatus(text) {
