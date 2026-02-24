@@ -15,8 +15,10 @@ Expert AI feedback on your prompts via a quality score, optimization suggestions
 - **Four output formats** — Assessment, Suggestions, Cost Estimate, and raw JSON
 - **Fully serverless** — Runs entirely in the browser with no backend required
 - **Share Prompt** — Share a prefilled URL of your prompt, with or without auto-assess, via a share modal
+- **Unlimited prompt length** — LZ-String compression and hash-based URLs support prompts of any size
 - **Use optimized prompt** — Open the improved prompt directly in ChatGPT, Claude, Copilot, or Gemini
-- **URL routing** — Prefill prompts via query parameters and optionally auto-assess on page load
+- **URL routing** — Prefill prompts via URL and optionally auto-assess on page load
+- **Content policy handling** — Automatic prompt rephrasing when content filters are triggered
 - **Smart loading UX** — Preflight connection checks, progressive status updates, and slow-generation hints
 - **Automatic fallback** — When Puter errors occur, a guided Ollama setup walkthrough appears
 
@@ -145,7 +147,25 @@ Connect directly to provider APIs. Get keys at:
 
 ## URL Routing
 
-Prefill the prompt via URL query parameters:
+Share prompts of any length using hash-based URLs with LZ-String compression. The hash fragment is never sent to the server, so there's no URI length limit.
+
+### Hash-based URLs (Recommended)
+
+The **Share Prompt** button generates compressed hash-based URLs:
+
+```
+https://yourdomain.com/assessprompts/#p=<compressed>&enter
+```
+
+- `#p=` — LZ-String compressed prompt
+- `&c=` — LZ-String compressed context (optional)
+- `&enter` — Auto-assess on page load (optional)
+
+This format supports prompts of any length (tested with 10K+ character prompts).
+
+### Legacy Query String URLs
+
+For backward compatibility, query string URLs still work for shorter prompts:
 
 ```
 https://yourdomain.com/assessprompts/?prompt=Your+prompt+text+here
@@ -162,6 +182,14 @@ The bare `?=` format also works:
 ```
 https://yourdomain.com/assessprompts/?=Your+prompt+text+here
 ```
+
+### URL Priority
+
+The app checks URLs in this order:
+1. Hash fragment (`#p=` compressed)
+2. Query string (`?p=` compressed)
+3. Query string (`?prompt=` uncompressed)
+4. Bare query string (`?=` legacy)
 
 ## Sharing and Using Prompts
 
@@ -181,6 +209,17 @@ After assessment, the **Use optimized prompt** section lets you open the improve
 | Claude | Copies optimized prompt to clipboard, opens claude.ai/new |
 | Copilot | Copies optimized prompt to clipboard, opens copilot.microsoft.com |
 | Gemini | Copies optimized prompt to clipboard, opens gemini.google.com |
+
+## Content Policy Handling
+
+Some prompts may trigger content policy restrictions from the AI model (e.g., requests to clone websites or generate copyrighted content). When this happens:
+
+1. A **Content Policy Notice** modal appears explaining why the prompt was flagged
+2. The specific reason from the model is displayed
+3. Click **Fix Prompt Automatically** to rephrase the prompt with educational framing
+4. The app automatically re-assesses the fixed prompt
+
+This typically resolves issues by converting phrases like "clone this website" to "build inspired by" or "analyze the design patterns of".
 
 ## Agentic / API Usage
 
@@ -259,16 +298,19 @@ assessprompts/
 ## Technical Details
 
 - Pure HTML, CSS, and JavaScript — no frameworks or build tools
+- LZ-String compression for URL sharing — supports prompts of any length
+- Hash-based URLs (`#p=`) avoid server URI length limits
 - API key stored in-session or optionally in localStorage (prefixed `ap_`)
 - Seven built-in API providers with native request format handling
 - Puter and OpenRouter work directly in the browser without CORS issues
 - Ollama works locally with `OLLAMA_ORIGINS=*` — no API key, no data leaves your machine
 - Preflight checks verify Ollama/custom endpoint connectivity and model availability before sending requests
 - Puter errors automatically trigger a guided Ollama fallback modal
+- Content policy violations show a compliance modal with automatic prompt fixing
 - Temperature set to 0.3 for consistent, deterministic assessments
 - Pricing table embedded in `assessEngine.js` and passed to the model in the system message
 - Cost calculations performed by the model using the embedded pricing data
-- URL routing supports `?prompt=`, bare `?=`, and `&enter` for auto-assessment
+- URL routing supports hash (`#p=`), query string (`?prompt=`), bare (`?=`), and `&enter` for auto-assessment
 - Share Prompt modal with copy link and copy link with auto-assess options
 - Use optimized prompt buttons open improved prompts directly in ChatGPT, Claude, Copilot, and Gemini
 - Slow-generation hint appears after 10 seconds
